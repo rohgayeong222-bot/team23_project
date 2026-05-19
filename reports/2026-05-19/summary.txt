@@ -1,0 +1,5 @@
+=== [Summary Report] ===
+Total Logs: 2
+Errors: 1
+Error Ratio: 50.00%
+State: 2 (0:H, 1:W, 2:C)
