@@ -24,8 +24,7 @@ int read_line(int fd, char *buffer, int max_len) {
         if (bytes_read == 0) return i;
         if (bytes_read < 0) return -1;
         buffer[i++] = c;
-        if (c == '
-') break;
+        if (c == '\n') break;
     }
     buffer[i] = '\0';
     return i;
@@ -77,8 +76,7 @@ int main() {
 
                     char line[512];
                     while (read_line(fd, line, sizeof(line)) > 0) {
-                        if (line[strlen(line) - 1] != '
-') continue;
+                        if (line[strlen(line) - 1] != '\n') continue;
 
                         log_entry_t entry;
                         if (parser_parse_line(line, &entry)) {
