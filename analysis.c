@@ -1,41 +1,40 @@
 #include "common.h"
 
-// 통계 및 인시던트 구조체를 초기화하는 함수
 void analysis_init(metrics_t *metrics, incident_t *incident) {
-    memset(metrics, 0, sizeof(metrics_t));
-    memset(incident, 0, sizeof(incident_t));
-    metrics->state = STATE_HEALTHY;
+    metrics->total_requests = 0;
+    metrics->error_count = 0;
+    metrics->error_ratio = 0.0;
+    metrics->current_status = HEALTHY;
+
+    incident->is_active = 0;
+    memset(incident->first_critical_time, 0, sizeof(incident->first_critical_time));
+    memset(incident->last_error_msg, 0, sizeof(incident->last_error_msg));
 }
 
-// 새 로그 데이터를 바탕으로 통계 갱신 및 상태(정상/경고/위험)를 판정하는 함수
 void analysis_update(metrics_t *metrics, incident_t *incident, const log_entry_t *entry) {
-    metrics->total_logs++;
+    metrics->total_requests++;
+    metrics->error_count++; // 파서가 error 레벨만 걸러서 주므로 무조건 증가
+    
+    // 에러 비율 동적 계산
+    metrics->error_ratio = ((double)metrics->error_count / metrics->total_requests) * 100.0;
 
-    if (strstr(entry->level, "error") != NULL) metrics->error_logs++;
-    else if (strstr(entry->level, "notice") != NULL) metrics->notice_logs++;
-    else if (strstr(entry->level, "warn") != NULL) metrics->warn_logs++;
-
-    if (metrics->total_logs > 0) {
-        metrics->error_ratio = ((double)metrics->error_logs / metrics->total_logs) * 100.0;
-    }
-
+    // 시스템 상태 결정 상태머신 (임계치: 30%)
+    status_t old_status = metrics->current_status;
+    
     if (metrics->error_ratio >= 30.0) {
-        metrics->state = STATE_CRITICAL;
-        if (incident->active == 0) {
-            incident->active = 1;
-            strcpy(incident->start_time, entry->timestamp);
-            strcpy(incident->first_error_message, entry->message);
-        }
+        metrics->current_status = CRITICAL;
     } else if (metrics->error_ratio >= 10.0) {
-        metrics->state = STATE_WARNING;
+        metrics->current_status = WARNING;
     } else {
-        metrics->state = STATE_HEALTHY;
+        metrics->current_status = HEALTHY;
     }
 
-    if (incident->active == 1) {
-        incident->log_count_in_incident++;
-        if (strstr(entry->level, "error") != NULL) {
-            incident->error_count_in_incident++;
-        }
+    // HEALTHY/WARNING 상태에서 최초로 CRITICAL 상태로 진입 시 사건 대장 생성
+    if (metrics->current_status == CRITICAL && old_status != CRITICAL) {
+        incident->is_active = 1;
+        sprintf(incident->first_critical_time, "%s %s", entry->date, entry->time);
     }
+
+    // 가장 최근에 발생한 위험 에러 메시지 상시 동기화
+    strncpy(incident->last_error_msg, entry->message, sizeof(incident->last_error_msg) - 1);
 }

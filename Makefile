@@ -1,11 +1,19 @@
 CC = gcc
-CFLAGS = -Wall -pthread
-
-SRCS = log_tracker.c parser.c analysis.c report.c socket_server.c
+CFLAGS = -Wall -Wextra -g -pthread
 TARGET = log_tracker
 
-$(TARGET): $(SRCS)
-	$(CC) $(CFLAGS) -o $(TARGET) $(SRCS)
+OBJS = log_tracker.o parser.o analysis.o report.o socket_server.o
+
+all: $(TARGET)
+
+$(TARGET): $(OBJS)
+	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS)
+
+%.o: %.c common.h
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(TARGET) summary.txt incident.txt
+	rm -f $(OBJS) $(TARGET)
+	rm -rf reports/
+
+.PHONY: all clean

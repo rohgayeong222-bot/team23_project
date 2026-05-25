@@ -1,30 +1,48 @@
 #include "common.h"
 
-// 현재 통계 지표를 요약 리포트(.txt) 파일로 기록하는 함수
-void report_write_summary(const char *filename, const metrics_t *metrics) {
-    int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+// 저수준 시스템 콜(open, write, close)을 사용한 요약 리포트 저장
+void report_write_summary(const char *path, const metrics_t *metrics) {
+    int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (fd < 0) return;
 
     char buffer[512];
-    sprintf(buffer, "=== [Summary Report] ===\nTotal Logs: %d\nErrors: %d\nError Ratio: %.2f%%\nState: %d (0:H, 1:W, 2:C)\n",
-            metrics->total_logs, metrics->error_logs, metrics->error_ratio, metrics->state);
+    const char *status_str[] = {"HEALTHY", "WARNING", "CRITICAL"};
+    
+    int len = sprintf(buffer, 
+        "=======================================\n"
+        "        SYSTEM SUMMARY REPORT          \n"
+        "=======================================\n"
+        "Total Requests Analyzed : %d\n"
+        "Total Errors Detected   : %d\n"
+        "Current Error Ratio     : %.2f%%\n"
+        "Current System Status   : %s\n"
+        "=======================================\n",
+        metrics->total_requests, metrics->error_count, 
+        metrics->error_ratio, status_str[metrics->current_status]);
 
-    write(fd, buffer, strlen(buffer));
+    write(fd, buffer, len);
     close(fd);
 }
 
-// 위험 상태 발생 시 인시던트 리포트(.txt) 파일을 기록하는 함수
-void report_write_incident(const char *filename, const incident_t *incident) {
-    if (incident->active == 0) return;
+// 저수준 시스템 콜을 사용한 인시던트(비상) 보고서 저장
+void report_write_incident(const char *path, const incident_t *incident) {
+    // CRITICAL 상태가 아니라서 활성화되지 않은 경우 리포트를 작성하지 않음
+    if (!incident->is_active) return;
 
-    int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
     if (fd < 0) return;
 
     char buffer[512];
-    sprintf(buffer, "!!! [INCIDENT DETECTED] !!!\nStart Time: %s\nFirst Error: %s\nLogs during incident: %d\nErrors during incident: %d\n",
-            incident->start_time, incident->first_error_message, 
-            incident->log_count_in_incident, incident->error_count_in_incident);
+    int len = sprintf(buffer,
+        "=======================================\n"
+        "       🚨 SYSTEM INCIDENT REPORT 🚨    \n"
+        "=======================================\n"
+        "Incident Triggered At  : %s\n"
+        "Last Critical Error    : %s\n"
+        "Action Required        : Please Check Nginx Infrastructure!\n"
+        "=======================================\n",
+        incident->first_critical_time, incident->last_error_msg);
 
-    write(fd, buffer, strlen(buffer));
+    write(fd, buffer, len);
     close(fd);
 }
