@@ -1,5 +1,0 @@
-!!! [INCIDENT DETECTED] !!!
-Start Time: 2026/05/18 22:30:00
-First Error: Fake Nginx error test
-Logs during incident: 1
-Errors during incident: 1
